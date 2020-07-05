@@ -1,5 +1,10 @@
+using System.IO;
+using Api.Web.Data;
+using Api.Web.Hubs;
+using Api.Web.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -19,6 +24,17 @@ namespace Api.Web
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddSignalR();
+            services.AddMemoryCache();
+            services.AddDbContext<FileDbContext>(builder => builder.UseSqlite(Configuration.GetConnectionString("default")));
+            services.AddHostedService<MergingService>();
+            services.AddSingleton<MergingQueue>();
+
+            var rootDir = Configuration.GetValue<string>("RootDirectory");
+            if (!Directory.Exists(rootDir))
+            {
+                Directory.CreateDirectory(Path.Combine(rootDir));
+            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -37,6 +53,7 @@ namespace Api.Web
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapHub<NotificationHub>("/notification_hub");
                 endpoints.MapControllers();
             });
         }

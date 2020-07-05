@@ -3,9 +3,26 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30225.117
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{34A8FEE0-070D-47A6-B2F9-1D42DAC138B6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Api.Web", "src\Api.Web\Api.Web.csproj", "{87F5DD77-9A81-42A5-B8C6-77C4A6BACFDB}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{87F5DD77-9A81-42A5-B8C6-77C4A6BACFDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87F5DD77-9A81-42A5-B8C6-77C4A6BACFDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87F5DD77-9A81-42A5-B8C6-77C4A6BACFDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87F5DD77-9A81-42A5-B8C6-77C4A6BACFDB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{87F5DD77-9A81-42A5-B8C6-77C4A6BACFDB} = {34A8FEE0-070D-47A6-B2F9-1D42DAC138B6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {87C8F59A-1061-4AEF-95EC-5C0710273ABE}

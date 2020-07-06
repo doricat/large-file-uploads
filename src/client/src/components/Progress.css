@@ -1,0 +1,21 @@
+.wrapper {
+    width: 100%;
+    display: grid;
+    grid-gap: 1px;
+    grid-template-columns: repeat(auto-fill, 40px);
+}
+
+.box {
+    background-color: #fff;
+    border: 1px solid #444;
+    padding: 5px;
+    height: 40px;
+}
+
+.uploading {
+    background-color: yellow;
+}
+
+.success {
+    background-color: green;
+}

@@ -12,8 +12,7 @@ const DataTable = (props) => {
             if (response.ok === true) {
                 const json = await response.json();
                 setState(json);
-            }
-            else {
+            } else {
                 throw new Error();
             }
         }

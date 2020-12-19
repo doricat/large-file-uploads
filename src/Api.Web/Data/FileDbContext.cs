@@ -26,6 +26,7 @@ namespace Api.Web.Data
                 builder.Property(x => x.ContentType).HasColumnType("text").HasColumnName("content_type").HasMaxLength(50).IsRequired();
                 builder.Property(x => x.Size).HasColumnType("integer").HasColumnName("size").IsRequired();
                 builder.Property(x => x.Hash).HasColumnType("text").HasColumnName("hash");
+                builder.Property(x => x.FilledSize).HasColumnType("integer").HasColumnName("filled_size").IsRequired();
                 builder.Property(x => x.CreatedAt).HasColumnType("text").HasColumnName("created_at").IsRequired()
                     .HasConversion(x => x.ToString("O"), x => DateTime.Parse(x));
             });

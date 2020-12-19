@@ -4,6 +4,6 @@
     {
         public int BlockId { get; set; }
 
-        public bool Last { get; set; }
+        public bool Latest { get; set; }
     }
 }

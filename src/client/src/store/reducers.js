@@ -1,8 +1,10 @@
 import { combineReducers } from 'redux';
-import { reducer } from './file';
+import { reducer as fileReducer } from './file';
+import { reducer as optionReducer } from './option';
 
 const createRootReducer = () => combineReducers({
-    file: reducer
+    file: fileReducer,
+    option: optionReducer
 });
 
 export { createRootReducer };

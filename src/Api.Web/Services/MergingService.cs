@@ -61,27 +61,28 @@ namespace Api.Web.Services
                             continue;
                         }
 
-                        int fileSize;
                         using (var fileStream = File.Open(file.Filename, FileMode.Open, FileAccess.ReadWrite))
                         {
                             fileStream.Seek(fileBlock.Offset, SeekOrigin.Begin);
                             await fileStream.WriteAsync(fileBlock.Block, 0, fileBlock.Block.Length, stoppingToken);
-                            _logger.LogInformation("填充文件: {filename}, {offset}, {length}", file.Filename, fileBlock.Offset, fileBlock.Block.Length);
-                            fileSize = (int) fileStream.Length;
+                            _logger.LogInformation("填充文件: {filename}, offset: {offset}, length: {length}", file.Filename, fileBlock.Offset, fileBlock.Block.Length);
+                            file.FilledSize += fileBlock.Block.Length;
                         }
 
                         var notificationModel = new BlockViewModel
                         {
                             BlockId = fileBlock.Id
                         };
-                        if (fileBlock.Offset + fileBlock.Block.Length == fileSize)
+
+                        if (file.Size == file.FilledSize)
                         {
                             file.State = FileState.Merged;
-                            dbContext.Entry(file).State = EntityState.Modified;
-                            await dbContext.SaveChangesAsync(stoppingToken);
-                            notificationModel.Last = true;
+                            notificationModel.Latest = true;
                         }
-                        
+
+                        dbContext.Entry(file).State = EntityState.Modified;
+                        await dbContext.SaveChangesAsync(stoppingToken);
+
                         if (_memoryCache.TryGetValue(fileBlock.FileId, out string connectionId))
                         {
                             var client = _hubContext.Clients.Client(connectionId);

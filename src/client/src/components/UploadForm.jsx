@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 // import jsSHA from 'jssha';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { actions } from '../store/file';
 import * as signalR from '@microsoft/signalr';
 
@@ -15,15 +15,97 @@ const taskStates = {
     completed: 3
 };
 
-let taskData = {};
-function resetTaskData() {
-    taskData = {
-        state: null,
-        buffer: null,
-        index: 0,
-        blockId: 0,
-        fileId: null
+// block = {
+//     id: number,
+//     offset: number
+// }
+
+class TaskData {
+    constructor(model) {
+        if (model < 1 || model > 3) {
+            throw new Error();
+        }
+
+        this.#uploadModel = model;
+        if (this.#uploadModel === 1) {
+            this.#concurrenceCount = 1;
+        }
+
+        if (this.#uploadModel === 2 || this.#uploadModel === 3) {
+            this.#concurrenceCount = 5; // FIXME
+        }
     }
+
+    state = null;
+    buffer = null;
+    fileId = null;
+    blocks = [];
+    fetchCount = 0;
+    #blocks = undefined;
+    #blockReadIndex = 0;
+    #uploadModel = undefined;
+    #concurrenceCount = undefined;
+
+    getBlock() {
+        if (this.fetchCount < this.#concurrenceCount && this.#blockReadIndex < this.blocks.length) {
+            const index = this.#blockReadIndex++;
+            this.fetchCount++;
+
+            if (this.#uploadModel === 1 || this.#uploadModel === 2) {
+                return this.blocks[index];
+            }
+
+            if (this.#uploadModel === 3) {
+                if (this.#blocks === undefined) {
+                    this.randomizeBlocks();
+                }
+
+                return this.#blocks[index];
+            }
+        }
+
+        return null;
+    }
+
+    randomizeBlocks() {
+        this.#blocks = [];
+        this.blocks.map(x => this.#blocks.push(x));
+
+        for (let i = 0; i < this.#blocks.length; i++) {
+            const element = this.#blocks[i];
+            const j = this.getRandomInt(i, this.#blocks.length);
+            this.#blocks[i] = this.#blocks[j];
+            this.#blocks[j] = element;
+        }
+    }
+
+    getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min)) + min;
+    }
+
+    initBlocks(blockSize) {
+        let count = Math.floor(this.buffer.byteLength / blockSize);
+        if (this.buffer.size % blockSize !== 0) {
+            count++;
+        }
+
+        let offset = 0;
+        for (let i = 0; i < count; i++) {
+            this.blocks.push({
+                id: i,
+                offset: offset
+            });
+
+            offset += blockSize;
+        }
+    }
+}
+
+let taskData = undefined;
+function resetTaskData(model) {
+    taskData = new TaskData(model);
 }
 
 let headers = {};
@@ -44,6 +126,7 @@ const UploadForm = () => {
     const [taskState, setTaskState] = useState(null);
     const fileInput = useRef(null);
     const dispatch = useDispatch();
+    const model = useSelector(state => state.option.model);
 
     useEffect(() => {
         let connection = new signalR.HubConnectionBuilder()
@@ -59,7 +142,7 @@ const UploadForm = () => {
             const id = args.blockId;
             dispatch(actions.endBlockUploading(id));
 
-            if (args.last === true) {
+            if (args.latest === true) {
                 taskData.state = taskStates.completed;
                 setTaskState(taskStates.completed);
                 dispatch(actions.setLatestId(taskData.fileId));
@@ -82,8 +165,9 @@ const UploadForm = () => {
             return;
         }
 
-        setFile(files[0]);
-        dispatch(actions.dispatchFileInfo(files[0].name, files[0].size, files[0].type, blockSize));
+        const file = files[0];
+        setFile(file);
+        dispatch(actions.dispatchFileInfo(file.name, file.size, file.type, blockSize));
     };
 
     const removeSelected = () => {
@@ -94,7 +178,7 @@ const UploadForm = () => {
     };
 
     const upload = async () => {
-        resetTaskData();
+        resetTaskData(model);
         taskData.state = taskStates.uploading;
         setTaskState(taskStates.uploading);
 
@@ -117,63 +201,56 @@ const UploadForm = () => {
 
         const fileReader = new FileReader();
         fileReader.readAsArrayBuffer(file);
-        fileReader.onloadend = async function () {
+        fileReader.onloadend = function () {
             if (this.readyState === FileReader.DONE) {
                 taskData.buffer = fileReader.result;
                 taskData.fileId = json.id;
-                await doUpload(taskData);
+                taskData.initBlocks(blockSize);
+                doUpload(taskData);
             }
         };
     };
 
-    const doUpload = async (state) => {
+    const doUpload = (state) => {
         if (connectionId === null) {
             throw new Error();
         }
 
-        for (let i = state.index, blockId = state.blockId; i < state.buffer.byteLength; i += blockSize, blockId++) {
-            dispatch(actions.beginBlockUploading(blockId));
-            let block = state.buffer.slice(i, i + blockSize);
-            // const hash = new jsSHA("SHA-1", "ARRAYBUFFER", { numRounds: 1 });
-            // hash.update(block);
-            // const sha1 = hash.getHash("HEX");
-            let base64 = arrayBufferToBase64(block);
-            let response = await fetch(`/api/files/${state.fileId}`, {
+        let block = null;
+        while ((block = state.getBlock()) !== null) {
+            dispatch(actions.beginBlockUploading(block.id));
+            const buffer = state.buffer.slice(block.offset, block.offset + blockSize);
+            const base64 = arrayBufferToBase64(buffer);
+            fetch(`/api/files/${state.fileId}`, {
                 method: "PATCH",
                 headers: headers,
                 body: JSON.stringify({
                     fileStream: base64,
-                    id: blockId,
-                    offset: i
+                    id: block.id,
+                    offset: block.offset
                 })
+            }).then(response => {
+                if (!response.ok) {
+                    console.error(response);
+                    throw new Error();
+                }
+
+                state.fetchCount--;
+                if (state.state !== taskStates.paused && state.state !== taskStates.canceled) {
+                    doUpload(state);
+                }
             });
-
-            if (!response.ok) {
-                console.error(response);
-                throw new Error();
-            }
-
-            if (taskData.state === taskStates.paused) {
-                taskData.index = i += blockSize;
-                taskData.blockId = ++blockId;
-                break;
-            }
-
-            if (taskData.state === taskStates.canceled) {
-                break;
-            }
         }
     };
 
-    const pause = async () => {
+    const pause = () => {
         if (taskData.state === taskStates.uploading) {
             taskData.state = taskStates.paused;
             setTaskState(taskStates.paused);
-        }
-        else if (taskData.state === taskStates.paused) {
+        } else if (taskData.state === taskStates.paused) {
             taskData.state = taskStates.uploading;
             setTaskState(taskStates.uploading);
-            await doUpload(taskData);
+            doUpload(taskData);
         }
     };
 
@@ -181,7 +258,7 @@ const UploadForm = () => {
         taskData.state = taskStates.canceled;
         setTaskState(taskStates.canceled);
         removeSelected();
-        // TODO 删除文件
+        // TODO 删除服务器文件
     };
 
     const hasFile = file !== null;

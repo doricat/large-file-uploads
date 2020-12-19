@@ -18,6 +18,8 @@ namespace Api.Web.Data
 
         public string Hash { get; set; }
 
+        public int FilledSize { get; set; }
+
         public DateTime CreatedAt { get; set; }
     }
 }

@@ -53,7 +53,7 @@ namespace Api.Web
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapHub<NotificationHub>("/notification_hub");
+                endpoints.MapHub<NotificationHub>("/api/notification_hub");
                 endpoints.MapControllers();
             });
         }

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 namespace Api.Web.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class FilesController : ControllerBase
     {
         private readonly ILogger<FilesController> _logger;
@@ -70,7 +70,8 @@ namespace Api.Web.Controllers
                 CreatedAt = DateTime.Now,
                 ContentType = model.ContentType,
                 State = FileState.Uploading,
-                Hash = model.Hash
+                Hash = model.Hash,
+                FilledSize = 0
             });
             await _dbContext.SaveChangesAsync(HttpContext.RequestAborted);
 
